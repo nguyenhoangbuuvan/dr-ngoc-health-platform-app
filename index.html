@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dr Ngọc Health Platform</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">DN</span>
+        <div><strong>Dr Ngọc Health Platform</strong><small>Hồ sơ bệnh án điện tử</small></div>
+      </div>
+      <button class="nav active" type="button" data-view="overview">Tổng quan hồ sơ</button>
+      <button class="nav" type="button" data-view="consultation">Phiếu khám</button>
+      <button class="nav" type="button" data-view="labs">Xét nghiệm</button>
+      <div class="session"><span id="sessionState">Chưa đăng nhập</span><button id="signOutButton" type="button" hidden>Đăng xuất</button></div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div><h1>Tra cứu và cập nhật hồ sơ khách hàng</h1><p id="statusLine">Đăng nhập bằng tài khoản nhân viên đã được cấp quyền.</p></div>
+        <span id="connectionStatus" class="pill">Chưa kết nối</span>
+      </header>
+
+      <section id="loginPanel" class="panel login-panel">
+        <form id="loginForm" class="login-form">
+          <label>Email<input id="emailInput" type="email" autocomplete="email" required /></label>
+          <label>Mật khẩu<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
+          <button class="primary" type="submit">Đăng nhập</button>
+          <div id="loginError" class="error" hidden></div>
+        </form>
+      </section>
+
+      <section id="workspace" class="workspace" hidden>
+        <section class="search-panel panel">
+          <label>Tìm theo tên, số điện thoại hoặc mã khách hàng<input id="searchInput" type="search" placeholder="VD: DNG-CUS-0000001 hoặc 094..." /></label>
+          <button id="searchButton" class="primary" type="button">Tìm hồ sơ</button>
+        </section>
+        <section class="layout">
+          <section class="panel result-panel"><div class="panel-head"><h2>Kết quả</h2><span id="resultCount">0</span></div><div id="resultList" class="result-list"></div></section>
+          <section class="panel profile-panel"><div class="panel-head"><h2>Hồ sơ bệnh án điện tử</h2><span id="profileStatus">Chưa chọn</span></div><div id="profileContent" class="profile-content"><div class="empty">Chọn một khách hàng để xem hồ sơ.</div></div></section>
+        </section>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
