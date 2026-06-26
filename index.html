@@ -7,43 +7,196 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <aside class="sidebar">
-      <div class="brand">
-        <span class="brand-mark">DN</span>
-        <div><strong>Dr Ngọc Health Platform</strong><small>Hồ sơ bệnh án điện tử</small></div>
-      </div>
-      <button class="nav active" type="button" data-view="overview">Tổng quan hồ sơ</button>
-      <button class="nav" type="button" data-view="consultation">Phiếu khám</button>
-      <button class="nav" type="button" data-view="labs">Xét nghiệm</button>
-      <div class="session"><span id="sessionState">Chưa đăng nhập</span><button id="signOutButton" type="button" hidden>Đăng xuất</button></div>
-    </aside>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">DN</div>
+          <div>
+            <h1>Dr Ngọc Health Platform</h1>
+            <p>Customer 360</p>
+          </div>
+        </div>
 
-    <main class="main">
-      <header class="topbar">
-        <div><h1>Tra cứu và cập nhật hồ sơ khách hàng</h1><p id="statusLine">Đăng nhập bằng tài khoản nhân viên đã được cấp quyền.</p></div>
-        <span id="connectionStatus" class="pill">Chưa kết nối</span>
-      </header>
+        <nav class="nav">
+          <div class="nav-group-label">Nhân viên</div>
+          <button class="nav-item active" id="navCustomers" type="button" data-view="customers">Hồ sơ khách hàng</button>
+          <button class="nav-item" id="navAiChat" type="button" data-view="ai-chat">AI tra cứu</button>
+          <div class="nav-group-label admin-only">Quản trị</div>
+          <button class="nav-item admin-only" id="navReviewQueue" type="button" data-view="review-queue">Review Queue <span class="nav-badge" id="reviewQueueBadge" hidden></span></button>
+          <button class="nav-item admin-only" id="navDuplicates" type="button" data-view="duplicates">Rà soát trùng</button>
+          <button class="nav-item admin-only" id="navMonitoring" type="button" data-view="monitoring">Realtime / Audit</button>
+        </nav>
 
-      <section id="loginPanel" class="panel login-panel">
-        <form id="loginForm" class="login-form">
-          <label>Email<input id="emailInput" type="email" autocomplete="email" required /></label>
-          <label>Mật khẩu<input id="passwordInput" type="password" autocomplete="current-password" required /></label>
-          <button class="primary" type="submit">Đăng nhập</button>
-          <div id="loginError" class="error" hidden></div>
-        </form>
-      </section>
-
-      <section id="workspace" class="workspace" hidden>
-        <section class="search-panel panel">
-          <label>Tìm theo tên, số điện thoại hoặc mã khách hàng<input id="searchInput" type="search" placeholder="VD: DNG-CUS-0000001 hoặc 094..." /></label>
-          <button id="searchButton" class="primary" type="button">Tìm hồ sơ</button>
+        <section class="session-panel" id="sessionPanel">
+          <div class="session-state" id="sessionState">Chưa đăng nhập</div>
+          <div class="role-pill" id="rolePill" hidden></div>
+          <button class="ghost-button" id="signOutButton" type="button" hidden>Đăng xuất</button>
         </section>
-        <section class="layout">
-          <section class="panel result-panel"><div class="panel-head"><h2>Kết quả</h2><span id="resultCount">0</span></div><div id="resultList" class="result-list"></div></section>
-          <section class="panel profile-panel"><div class="panel-head"><h2>Hồ sơ bệnh án điện tử</h2><span id="profileStatus">Chưa chọn</span></div><div id="profileContent" class="profile-content"><div class="empty">Chọn một khách hàng để xem hồ sơ.</div></div></section>
+      </aside>
+
+      <main class="main">
+        <section class="topbar">
+          <div>
+            <h2 id="topbarTitle">Tra cứu khách hàng</h2>
+            <p id="summaryLine">Dashboard nội bộ kết nối Supabase production.</p>
+          </div>
+          <div class="status-pill" id="connectionStatus">Dashboard nội bộ</div>
         </section>
-      </section>
-    </main>
+
+        <section class="login-panel" id="loginPanel">
+          <form class="login-form" id="loginForm">
+            <label>
+              Email
+              <input id="emailInput" name="email" type="email" autocomplete="email" required />
+            </label>
+            <label>
+              Mật khẩu
+              <input id="passwordInput" name="password" type="password" autocomplete="current-password" required />
+            </label>
+            <button class="primary-button" type="submit">Đăng nhập</button>
+          </form>
+          <div class="error-box" id="loginError" hidden></div>
+        </section>
+
+        <section class="workspace" id="workspace" hidden>
+          <section class="workspace-view" id="customersView">
+            <div class="search-row">
+              <label class="search-box">
+                <span>Tìm theo mã, số điện thoại, tên</span>
+                <input id="searchInput" type="search" placeholder="DNG-CUS-0000001 hoặc 0944416886" />
+              </label>
+              <button class="primary-button" id="searchButton" type="button">Tìm</button>
+            </div>
+
+            <div class="content-grid">
+              <section class="panel results-panel">
+                <div class="panel-header">
+                  <h3>Kết quả</h3>
+                  <span id="resultCount">0</span>
+                </div>
+                <div class="result-list" id="resultList"></div>
+                <div class="pagination" id="resultPagination" hidden></div>
+              </section>
+
+              <section class="panel profile-panel">
+                <div class="panel-header">
+                  <h3>Hồ sơ</h3>
+                  <span id="profileStatus">Chưa chọn</span>
+                </div>
+                <div class="profile-content" id="profileContent">
+                  <div class="empty-state">Chọn một khách hàng để xem hồ sơ.</div>
+                </div>
+              </section>
+            </div>
+
+            <section class="panel audit-panel">
+              <div class="panel-header">
+                <h3>Audit gần nhất</h3>
+                <button class="ghost-button" id="refreshAuditButton" type="button">Tải lại</button>
+              </div>
+              <div class="audit-list" id="auditList"></div>
+            </section>
+          </section>
+
+          <section class="workspace-view duplicate-view" id="duplicatesView" hidden>
+            <div class="panel-header">
+              <div>
+                <h3>Rà soát trùng</h3>
+                <span>Nhóm hồ sơ có khả năng dùng chung số điện thoại hoặc định danh.</span>
+              </div>
+              <button class="ghost-button" id="refreshDuplicatesButton" type="button">Tải lại</button>
+            </div>
+            <div class="duplicate-toolbar">
+              <div>
+                <strong id="duplicateTotal">0</strong>
+                <span>nhóm đang mở</span>
+              </div>
+              <span id="duplicateLoaded">Chưa tải</span>
+            </div>
+            <div class="duplicate-list" id="duplicateList"></div>
+          </section>
+
+          <section class="workspace-view review-queue-view" id="reviewQueueView" hidden>
+            <div class="panel-header">
+              <div>
+                <h3>Review Queue</h3>
+                <span>Tất cả gợi ý sức khỏe chưa được duyệt từ mọi khách hàng.</span>
+              </div>
+              <button class="ghost-button" id="refreshReviewQueueButton" type="button">Tải lại</button>
+            </div>
+            <div class="duplicate-toolbar">
+              <div>
+                <strong id="reviewQueueTotal">0</strong>
+                <span>gợi ý đang chờ</span>
+              </div>
+              <div class="review-queue-filters">
+                <button class="small-button active" id="filterAll" type="button" data-filter="all">Tất cả</button>
+                <button class="small-button" id="filterCondition" type="button" data-filter="condition">Bệnh lý</button>
+                <button class="small-button" id="filterLab" type="button" data-filter="lab_result">Xét nghiệm</button>
+              </div>
+              <span id="reviewQueueLoaded">Chưa tải</span>
+            </div>
+            <div class="review-queue-list" id="reviewQueueList"></div>
+          </section>
+
+          <section class="workspace-view monitoring-view" id="monitoringView" hidden>
+            <div class="monitoring-heading">
+              <div>
+                <h3>Realtime / Audit</h3>
+                <p>Theo dõi Pancake → n8n → Supabase và hoạt động gần nhất của nhân viên.</p>
+              </div>
+              <button class="ghost-button" id="refreshMonitoringButton" type="button">Tải lại</button>
+            </div>
+
+            <div class="monitoring-summary" id="monitoringSummary"></div>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h3>Event mới nhất</h3>
+                  <span id="monitoringLoaded">Chưa tải</span>
+                </div>
+              </div>
+              <div class="monitoring-list" id="monitoringList"></div>
+            </section>
+
+            <section class="panel audit-admin-panel">
+              <div class="panel-header">
+                <div>
+                  <h3>Audit gần nhất</h3>
+                  <span>Lịch sử thao tác xem, tìm kiếm, nhập liệu gần đây.</span>
+                </div>
+                <button class="ghost-button" id="refreshAuditAdminButton" type="button">Tải lại</button>
+              </div>
+              <div class="audit-list" id="auditAdminList"></div>
+            </section>
+          </section>
+
+          <section class="workspace-view ai-chat-view" id="aiChatView" hidden>
+            <div class="ai-chat-messages" id="aiChatMessages">
+              <div class="ai-chat-welcome">
+                <p>✦ Hỏi về khách hàng bằng tên, số điện thoại, hoặc mã khách hàng.<br/>AI sẽ tự tra cứu và trả lời.</p>
+              </div>
+            </div>
+            <div class="ai-chat-footer">
+              <div class="ai-footer-meta">
+                <div class="ai-context-chip" id="aiContextChip" hidden>
+                  <span>Đang xem: <strong id="aiContextName"></strong></span>
+                  <button type="button" id="aiClearContext" class="chip-clear" title="Đổi khách hàng">✕</button>
+                </div>
+                <button class="ghost-button ai-clear-btn" type="button" id="aiClearChat">Xóa hội thoại</button>
+              </div>
+              <form class="ai-chat-input-row" id="aiChatForm">
+                <textarea id="aiChatInput" rows="2" placeholder="Nhập tên KH, SĐT, mã KH hoặc câu hỏi… (Enter gửi, Shift+Enter xuống dòng)"></textarea>
+                <button class="primary-button" type="submit" id="aiChatSend">Gửi</button>
+              </form>
+            </div>
+          </section>
+
+        </section>
+      </main>
+    </div>
+
     <script src="./app.js"></script>
   </body>
 </html>
