@@ -14,6 +14,8 @@ const state = {
   searchResults: [],
   searchPage: 1,
   searchPageSize: 20,
+  recentSearches: JSON.parse(localStorage.getItem("drn_recent_searches") || "[]"),
+  reviewQueueFilter: "all",
   aiChatHistory: [], // [{role: "user"|"assistant", content: string, customer_code?: string}]
   aiChatPending: false,
   aiChatRequestId: 0,
@@ -42,6 +44,8 @@ const els = {
   summaryLine: document.getElementById("summaryLine"),
   searchInput: document.getElementById("searchInput"),
   searchButton: document.getElementById("searchButton"),
+  searchClearButton: document.getElementById("searchClearButton"),
+  recentSearches: document.getElementById("recentSearches"),
   resultList: document.getElementById("resultList"),
   resultCount: document.getElementById("resultCount"),
   profileContent: document.getElementById("profileContent"),
@@ -60,6 +64,7 @@ const els = {
   filterCondition: document.getElementById("filterCondition"),
   filterLab: document.getElementById("filterLab"),
   rolePill: document.getElementById("rolePill"),
+  permissionStrip: document.getElementById("permissionStrip"),
   resultPagination: document.getElementById("resultPagination"),
   auditAdminList: document.getElementById("auditAdminList"),
   refreshAuditAdminButton: document.getElementById("refreshAuditAdminButton"),
@@ -143,7 +148,28 @@ function renderSession() {
   if (signedIn && !isAdmin && ["duplicates", "review-queue", "monitoring"].includes(state.activeView)) {
     state.activeView = "customers";
   }
+  renderPermissionStrip();
+  renderRecentSearches();
   renderView();
+}
+
+function renderPermissionStrip() {
+  if (!els.permissionStrip) return;
+  if (!state.accessToken) {
+    els.permissionStrip.hidden = true;
+    els.permissionStrip.innerHTML = "";
+    return;
+  }
+
+  const role = state.staff?.role || "staff";
+  const copy = isAdminRole()
+    ? "Quyền quản lý: được review dữ liệu, xem audit, nhập xét nghiệm confirmed và rà soát trùng."
+    : "Quyền nhân viên: tra cứu khách, xem hồ sơ, tạo phiếu khám và ghi note. Audit, merge, review và nhập xét nghiệm confirmed bị khóa.";
+  els.permissionStrip.hidden = false;
+  els.permissionStrip.innerHTML = `
+    <span class="badge ${isAdminRole() ? "blue" : ""}">${escapeHtml(roleLabel(role))}</span>
+    <span>${escapeHtml(copy)}</span>
+  `;
 }
 
 function renderView() {
@@ -170,6 +196,12 @@ function renderView() {
 }
 
 async function switchView(view) {
+  if (["duplicates", "review-queue", "monitoring"].includes(view) && !isAdminRole()) {
+    window.alert("Tài khoản nhân viên không có quyền mở khu quản trị.");
+    state.activeView = "customers";
+    renderView();
+    return;
+  }
   state.activeView = view;
   renderView();
   if (view === "duplicates") await loadDuplicateGroups();
@@ -422,7 +454,7 @@ function renderResults(results = state.searchResults) {
 
   els.resultCount.textContent = total ? `${start + 1}-${start + pageItems.length}/${total}` : "0";
   if (!total) {
-    els.resultList.innerHTML = '<div class="empty-state">Không có kết quả.</div>';
+    els.resultList.innerHTML = '<div class="empty-state">Không có kết quả. Thử tìm bằng số điện thoại không dấu cách, mã DNG-CUS hoặc một phần tên khách.</div>';
     if (els.resultPagination) els.resultPagination.hidden = true;
     return;
   }
@@ -581,6 +613,15 @@ function renderProfile(profile, ehrSummary = null) {
         <span class="badge ${badgeTone(customer.data_quality_status)}">${escapeHtml(dataQualityLabel(customer.data_quality_status))}</span>
         <button class="small-button" type="button" data-action="toggle-edit-profile">Sửa thông tin</button>
       </div>
+    </div>
+
+    <div class="profile-action-bar">
+      <button class="small-button" type="button" data-profile-tab="overview">Tổng quan</button>
+      <button class="small-button" type="button" data-profile-tab="timeline">Timeline</button>
+      <button class="small-button" type="button" data-profile-tab="consultation">Phiếu khám</button>
+      <button class="small-button" type="button" data-profile-tab="labs">Xét nghiệm</button>
+      <button class="small-button" type="button" data-action="open-ai-for-customer" data-code="${escapeHtml(customer.customer_code)}" data-name="${escapeHtml(customer.full_name || "")}">Hỏi AI</button>
+      <button class="small-button" type="button" data-action="print-profile">In hồ sơ</button>
     </div>
 
     <form class="edit-profile-form" data-edit-profile-form data-customer-code="${escapeHtml(customer.customer_code)}" hidden>
@@ -768,14 +809,23 @@ function renderLabsWorkspace(customerCode, labResults, recommendedLabMetrics) {
         ${renderLabResults(labResults)}
       </section>
       <section class="info-card">
-        <h5>Nhập chỉ số</h5>
-        ${renderLabEntryForm(customerCode, recommendedLabMetrics)}
+        <h5>${isAdminRole() ? "Nhập chỉ số" : "Nhập chỉ số bị khóa"}</h5>
+        ${isAdminRole() ? renderLabEntryForm(customerCode, recommendedLabMetrics) : renderReadOnlyLabNotice()}
       </section>
     </div>
     <section class="info-card wide-card">
       <h5>Chỉ số nên theo dõi</h5>
       ${renderRecommendedLabMetrics(recommendedLabMetrics)}
     </section>
+  `;
+}
+
+function renderReadOnlyLabNotice() {
+  return `
+    <div class="permission-note">
+      <strong>Staff chỉ xem xét nghiệm đã xác nhận.</strong>
+      <span>Nhập kết quả xét nghiệm confirmed là thao tác dữ liệu sức khỏe, hiện chỉ owner/manager được làm. Nếu cần nhập mới, chuyển hồ sơ cho quản lý review.</span>
+    </div>
   `;
 }
 
@@ -1613,6 +1663,7 @@ async function runSearch() {
     const results = await searchCustomers(query);
     state.searchResults = results || [];
     state.searchPage = 1;
+    rememberSearch(query);
     renderResults();
     await refreshAudit();
   } catch (error) {
@@ -1623,7 +1674,43 @@ async function runSearch() {
   }
 }
 
+function rememberSearch(query) {
+  const normalized = String(query || "").trim();
+  if (!normalized) return;
+  state.recentSearches = [normalized, ...state.recentSearches.filter((item) => item !== normalized)].slice(0, 5);
+  localStorage.setItem("drn_recent_searches", JSON.stringify(state.recentSearches));
+  renderRecentSearches();
+}
+
+function renderRecentSearches() {
+  if (!els.recentSearches) return;
+  if (!state.accessToken || !state.recentSearches.length) {
+    els.recentSearches.innerHTML = "";
+    return;
+  }
+
+  els.recentSearches.innerHTML = `
+    <span>Gần đây:</span>
+    ${state.recentSearches
+      .map((query) => `<button class="assist-chip recent" type="button" data-recent-search="${escapeHtml(query)}">${escapeHtml(query)}</button>`)
+      .join("")}
+  `;
+}
+
+function clearSearchState() {
+  els.searchInput.value = "";
+  state.searchResults = [];
+  state.searchPage = 1;
+  els.resultCount.textContent = "0";
+  els.resultList.innerHTML = '<div class="empty-state">Nhập mã khách, số điện thoại hoặc tên để bắt đầu tra cứu.</div>';
+  if (els.resultPagination) {
+    els.resultPagination.innerHTML = "";
+    els.resultPagination.hidden = true;
+  }
+}
+
 async function loadDuplicateGroups() {
+  if (!isAdminRole()) return;
   els.duplicateLoaded.textContent = "Đang tải";
   els.duplicateList.innerHTML = '<div class="empty-state">Đang tải danh sách rà soát.</div>';
   setBusy(els.refreshDuplicatesButton, true, "Đang tải");
@@ -1639,6 +1726,7 @@ async function loadDuplicateGroups() {
 }
 
 async function loadRealtimeMonitor() {
+  if (!isAdminRole()) return;
   els.monitoringLoaded.textContent = "Đang tải";
   els.monitoringList.innerHTML = '<div class="empty-state">Đang tải dữ liệu giám sát.</div>';
   setBusy(els.refreshMonitoringButton, true, "Đang tải");
@@ -1683,6 +1771,10 @@ async function openProfile(customerCode) {
 }
 
 async function handleRevealPhones(button) {
+  if (!isAdminRole()) {
+    window.alert("Chỉ owner/manager được hiện số điện thoại trong rà soát trùng.");
+    return;
+  }
   const candidateId = button.dataset.id;
   const phoneList = els.duplicateList.querySelector(`[data-phone-list="${CSS.escape(candidateId)}"]`);
   if (!candidateId || !phoneList) return;
@@ -1741,6 +1833,10 @@ function renderMergePreview(payload) {
 }
 
 async function handlePreviewMerge(button) {
+  if (!isAdminRole()) {
+    window.alert("Chỉ owner/manager được xem tác động merge.");
+    return;
+  }
   const candidateId = button.dataset.id;
   const previewBox = els.duplicateList.querySelector(`[data-merge-preview="${CSS.escape(candidateId)}"]`);
   if (!candidateId || !previewBox) return;
@@ -1764,6 +1860,10 @@ async function handlePreviewMerge(button) {
 }
 
 async function handleMergeGroup(button) {
+  if (!isAdminRole()) {
+    window.alert("Chỉ owner/manager được gộp hồ sơ.");
+    return;
+  }
   const candidateId = button.dataset.id;
   if (!candidateId) return;
 
@@ -1783,6 +1883,10 @@ async function handleMergeGroup(button) {
 }
 
 async function handleCandidateAction(button) {
+  if (!isAdminRole()) {
+    window.alert("Chỉ owner/manager được duyệt hoặc bỏ qua gợi ý sức khỏe.");
+    return;
+  }
   const { action, type, id } = button.dataset;
   if (!action || !type || !id) return;
 
@@ -1866,6 +1970,10 @@ async function handleAddNote(form) {
 }
 
 async function handleLabEntrySubmit(form) {
+  if (!isAdminRole()) {
+    window.alert("Tài khoản nhân viên không có quyền nhập kết quả xét nghiệm confirmed.");
+    return;
+  }
   const data = new FormData(form);
   const rawValue = String(data.get("value") || "").trim().replace(",", ".");
   const numericValue = rawValue !== "" && !Number.isNaN(Number(rawValue)) ? Number(rawValue) : null;
@@ -1963,6 +2071,10 @@ async function handleConsultationSubmit(form) {
 }
 
 async function handleDismissGroup(button) {
+  if (!isAdminRole()) {
+    window.alert("Chỉ owner/manager được xử lý nhóm hồ sơ trùng.");
+    return;
+  }
   const candidateId = button.dataset.id;
   if (!candidateId) return;
   const confirmed = window.confirm("Đánh dấu nhóm này không phải trùng? Hành động này sẽ ghi audit log.");
@@ -2036,6 +2148,7 @@ function renderReviewQueue(payload, filter) {
 }
 
 async function loadReviewQueue(filter) {
+  if (!isAdminRole()) return;
   const activeFilter = filter || state.reviewQueueFilter || "all";
   state.reviewQueueFilter = activeFilter;
   els.reviewQueueLoaded.textContent = "Đang tải";
@@ -2054,6 +2167,11 @@ async function loadReviewQueue(filter) {
 }
 
 async function refreshAudit() {
+  if (!isAdminRole()) {
+    els.auditList.innerHTML = "";
+    if (els.auditAdminList) els.auditAdminList.innerHTML = "";
+    return;
+  }
   try {
     const logs = await getAuditLogs();
     renderAudit(logs);
@@ -2120,6 +2238,21 @@ els.searchButton.addEventListener("click", runSearch);
 els.searchInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") runSearch();
 });
+els.searchClearButton.addEventListener("click", clearSearchState);
+
+document.querySelectorAll("[data-search-example]").forEach((button) => {
+  button.addEventListener("click", () => {
+    els.searchInput.value = button.dataset.searchExample || "";
+    els.searchInput.focus();
+  });
+});
+
+els.recentSearches.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-recent-search]");
+  if (!button) return;
+  els.searchInput.value = button.dataset.recentSearch || "";
+  runSearch();
+});
 
 if (els.resultPagination) {
   els.resultPagination.addEventListener("click", (event) => {
@@ -2146,6 +2279,14 @@ els.profileContent.addEventListener("click", (event) => {
   const printButton = event.target.closest('[data-action="print-profile"], [data-action="print-consultation"]');
   if (printButton) {
     window.print();
+    return;
+  }
+
+  const aiButton = event.target.closest('[data-action="open-ai-for-customer"]');
+  if (aiButton) {
+    state.aiContext = { code: aiButton.dataset.code, name: aiButton.dataset.name || aiButton.dataset.code };
+    updateAiContextChip();
+    switchView("ai-chat");
     return;
   }
 

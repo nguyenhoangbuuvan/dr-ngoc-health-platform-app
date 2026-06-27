@@ -307,6 +307,19 @@ select {
   gap: 16px;
 }
 
+.permission-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #cfe3ff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f8fbff;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .workspace-view {
   display: grid;
   gap: 16px;
@@ -314,13 +327,57 @@ select {
 
 .search-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px;
+  grid-template-columns: minmax(0, 1fr) 92px 78px;
   gap: 10px;
   align-items: end;
 }
 
 .search-box span {
   color: var(--muted);
+}
+
+.search-assist {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.search-assist > div,
+.recent-searches {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.assist-chip {
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--accent-dark);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.assist-chip:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.assist-chip.recent {
+  color: #315a8a;
+  background: #f8fbff;
+}
+
+.search-clear-button {
+  min-width: 0;
 }
 
 .content-grid {
@@ -490,6 +547,14 @@ select {
   border-bottom: 1px solid var(--line);
 }
 
+.profile-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
 .avatar {
   width: 58px;
   height: 58px;
@@ -540,6 +605,22 @@ select {
   border-radius: 8px;
   padding: 11px 12px;
   line-height: 1.45;
+}
+
+.permission-note {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #ecd38d;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  line-height: 1.45;
+}
+
+.permission-note span {
+  color: #735200;
+  font-size: 13px;
 }
 
 .quality-notice span {
@@ -1274,8 +1355,8 @@ select {
 
 .review-queue-item {
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   padding: 16px;
 }
 
@@ -1300,14 +1381,14 @@ select {
 
 .review-queue-customer span {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--muted);
 }
 
 .extraction-notes {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--text-muted);
-  border-left: 3px solid var(--border);
+  color: var(--muted);
+  border-left: 3px solid var(--line);
   padding-left: 10px;
 }
 
